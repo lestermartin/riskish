@@ -48,6 +48,10 @@ src/Board.tsx                # SVG world map
 src/Chat.tsx                 # global + game chat
 ```
 
+## Install Spacetime
+
+Follow the instructions at https://spacetimedb.com/install for your OS.
+
 ## Running locally
 
 ```bash
