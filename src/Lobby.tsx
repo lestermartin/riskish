@@ -19,8 +19,14 @@ const STATUS_LABEL: Record<string, string> = {
   playing: 'In progress',
 };
 
+const SETUP_MODE_LABEL: Record<string, string> = {
+  manual: 'Manual placement',
+  random: 'Random placement',
+};
+
 export function Lobby({ me, users, games, players, onView }: Props) {
   const [name, setName] = useState('');
+  const [setupMode, setSetupMode] = useState<'manual' | 'random'>('manual');
   const run = useRun();
   const createGame = useReducer(reducers.createGame);
   const joinGame = useReducer(reducers.joinGame);
@@ -46,7 +52,7 @@ export function Lobby({ me, users, games, players, onView }: Props) {
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (await run(createGame({ name }))) setName('');
+    if (await run(createGame({ name, setupMode }))) setName('');
   };
 
   return (
@@ -66,6 +72,29 @@ export function Lobby({ me, users, games, players, onView }: Props) {
               Create game
             </button>
           </form>
+          <div className="row">
+            <span className="muted">Initial placement:</span>
+            <div className="seg">
+              <button
+                type="button"
+                className={setupMode === 'manual' ? 'active' : ''}
+                onClick={() => setSetupMode('manual')}
+              >
+                Manual
+              </button>
+              <button
+                type="button"
+                className={setupMode === 'random' ? 'active' : ''}
+                onClick={() => setSetupMode('random')}
+              >
+                Random
+              </button>
+            </div>
+          </div>
+          <span className="muted" style={{ fontSize: 12 }}>
+            Manual: take turns claiming territories one at a time. Random: territories are dealt
+            automatically, then you resume placing your remaining armies one at a time.
+          </span>
           <span className="muted" style={{ fontSize: 12 }}>
             Games start automatically when {MAX_PLAYERS} players have joined, or when the creator
             starts with 2 or more.
@@ -84,7 +113,8 @@ export function Lobby({ me, users, games, players, onView }: Props) {
                   <div className="info">
                     <div className="name">{g.name}</div>
                     <div className="muted" style={{ fontSize: 12 }}>
-                      Hosted by {creator?.username ?? '?'} · {ps.map(p => p.username).join(', ')}
+                      Hosted by {creator?.username ?? '?'} · {SETUP_MODE_LABEL[g.setupMode] ?? g.setupMode} ·{' '}
+                      {ps.map(p => p.username).join(', ')}
                     </div>
                   </div>
                   <div className="seats" title={`${ps.length} / ${MAX_PLAYERS} players`}>

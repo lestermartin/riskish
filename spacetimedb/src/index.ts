@@ -89,6 +89,8 @@ const game = table(
     id: t.u64().primaryKey().autoInc(),
     name: t.string(),
     creatorId: t.u64(),
+    /** manual: claim territories one at a time. random: territories are dealt automatically. */
+    setupMode: t.string(),
     status: t.string().index('btree'),
     createdAt: t.timestamp(),
     startedAt: t.option(t.timestamp()),
@@ -509,6 +511,7 @@ function startGame(ctx: Ctx, g: GameRow) {
     });
 
   let status = 'claim';
+  let setupLog: string;
   if (n === 2) {
     // Two-player variant: deal 14 territories each plus 14 neutral, with the
     // 40 neutral armies spread randomly across the neutral territories.
@@ -528,6 +531,24 @@ function startGame(ctx: Ctx, g: GameRow) {
     for (const tr of neutral) ctx.db.territory.id.update(tr);
     for (const p of playersOf(ctx, g.id))
       ctx.db.gamePlayer.id.update({ ...p, armiesToPlace: armies - 14 });
+    setupLog = `Territories dealt (14 each, 14 neutral). Place your remaining ${armies - 14} armies.`;
+  } else if (g.setupMode === 'random') {
+    // Random placement: territories are dealt round-robin (1 army each) instead
+    // of being claimed manually, then players resume placing armies one at a time.
+    status = 'deploy';
+    const dealt = shuffle(ctx, [...Array(NUM_TERRITORIES).keys()]);
+    const counts = new Array(n).fill(0);
+    dealt.forEach((idx, i) => {
+      const seat = i % n;
+      const tr = getTerritory(ctx, g.id, idx);
+      ctx.db.territory.id.update({ ...tr, ownerSeat: seat, armies: 1 });
+      counts[seat] += 1;
+    });
+    for (const p of playersOf(ctx, g.id))
+      ctx.db.gamePlayer.id.update({ ...p, armiesToPlace: armies - counts[p.seat] });
+    setupLog = 'Territories randomly assigned. Place your remaining armies.';
+  } else {
+    setupLog = `Each player has ${armies} armies. Take turns claiming empty territories.`;
   }
 
   ctx.db.game.id.update({
@@ -539,13 +560,7 @@ function startGame(ctx: Ctx, g: GameRow) {
     phase: 'setup',
   });
   log(ctx, g.id, `Game started with ${n} players. Turn order: ${order.map(p => p.username).join(', ')}.`);
-  log(
-    ctx,
-    g.id,
-    status === 'claim'
-      ? `Each player has ${armies} armies. Take turns claiming empty territories.`
-      : `Territories dealt (14 each, 14 neutral). Place your remaining ${armies - 14} armies.`
-  );
+  log(ctx, g.id, setupLog);
 }
 
 /** After a setup placement (or forfeit), pass to the next seat that still has armies. */
@@ -732,8 +747,8 @@ function addPlayer(ctx: Ctx, g: GameRow, u: UserRow) {
 }
 
 export const createGame = spacetimedb.reducer(
-  { name: t.string() },
-  (ctx, { name }) => {
+  { name: t.string(), setupMode: t.string() },
+  (ctx, { name, setupMode }) => {
     const u = currentUser(ctx);
     if (activeGameOf(ctx, u.id)) throw new SenderError('You are already in an active game');
     const title = name.trim() || `${u.username}'s game`;
@@ -742,6 +757,7 @@ export const createGame = spacetimedb.reducer(
       id: 0n,
       name: title,
       creatorId: u.id,
+      setupMode: setupMode === 'random' ? 'random' : 'manual',
       status: 'lobby',
       createdAt: ctx.timestamp,
       startedAt: undefined,

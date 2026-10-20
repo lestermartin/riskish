@@ -18,6 +18,7 @@ export default __t.row({
   id: __t.u64().primaryKey(),
   name: __t.string(),
   creatorId: __t.u64().name("creator_id"),
+  setupMode: __t.string().name("setup_mode"),
   status: __t.string(),
   createdAt: __t.timestamp().name("created_at"),
   startedAt: __t.option(__t.timestamp()).name("started_at"),

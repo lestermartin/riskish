@@ -189,7 +189,10 @@ export function GameView({ game, players, me, users, onLeave }: Props) {
       <div className="panel stack" style={{ maxWidth: 640 }}>
         <div className="row">
           <h2 style={{ flex: 1 }}>{game.name}</h2>
-          <span className="muted">Waiting for players · {players.length} / 6</span>
+          <span className="muted">
+            Waiting for players · {players.length} / 6 ·{' '}
+            {game.setupMode === 'random' ? 'Random placement' : 'Manual placement'}
+          </span>
         </div>
         <ul className="list">
           {[...players]

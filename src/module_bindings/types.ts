@@ -55,6 +55,7 @@ export const Game = __t.object("Game", {
   id: __t.u64(),
   name: __t.string(),
   creatorId: __t.u64(),
+  setupMode: __t.string(),
   status: __t.string(),
   createdAt: __t.timestamp(),
   startedAt: __t.option(__t.timestamp()),
